@@ -12,6 +12,7 @@ const elements = {
     }
 }
 
+// Page state settings
 var today = new Date();
 // The yearActivationMonth determines the month that a specific year becomes
 // the default in the selectYear dropdown. Currently, 2 (March 15th) is used
@@ -29,6 +30,10 @@ elements.options.year.appendChild(defaultSelectOption);
 var panToMarkers = true;
 var popupOpen = false;
 
+// Portraits settings
+var portraitsBucketName = 'seniormap-portraits';
+
+// Sheets settings
 var institutionDataSheet = '1qEcBuuRtQT-hE_JyX6SlMxTodvXCtAXX1LSB4ABBlXU';
 var yearDocumentsSheet = '1VZmrdC-rm6noqxMoFWiPimOiM3-zmhk5kOmJ8RppU9w';
 // README FLAG: A new year and datasheet URL must be added to this array for the script to access the data on the spreadsheet
@@ -161,7 +166,7 @@ function displayMap(year, firstLoad) {
         // Either the transition ends or its time is up
         Promise.race([
             transitionEnd(elements.map, 'filter'),
-            sleep(firstLoad ? 0 : 750)  // 0 if the first load since initial fetch took time
+            sleep(firstLoad ? 0 : 750)  // If it's the first load, don't wait any extra time
         ])
     ]).then(function() {
         elements.map.classList.remove('loading');
@@ -178,7 +183,6 @@ function clearPopups() {
 
 function buildInstitutionData(year) {
     var institutions = {};
-    // TODO: Stop getting sheet data in array
     for (student of students.get(year)) {
         if (!institutions[student['Institution name']]) { // If the institution isn't already in the object
             if (!coordinates.has(student['Institution name'])) {
@@ -258,10 +262,10 @@ function details(institution) {
         var studentPhoto = document.createElement('img'),
             studentName = document.createElement('p'),
             studentMajor = document.createElement('p');
-        studentPhoto.src = 'portraits/' + currentYear + '/' + student.name + '.jpg';
+        studentPhoto.src = getPortraitUrl(currentYear, student.name);
         imageExists(studentPhoto.src, function(exists) {
             if (!exists) {
-                studentPhoto.src = 'portraits/blankHead.png';
+                studentPhoto.src = 'img/blankHead.png';
             }
         });
         studentPhoto.alt = student.name + ' portrait';
@@ -285,12 +289,16 @@ function details(institution) {
     popupOpen = true;
 }
 
+function getPortraitUrl(year, studentName) {
+    return `https://storage.googleapis.com/${portraitsBucketName}/${year}/${studentName}.jpg`;
+}
+
 function imageExists(url, callback) {
     var img = new Image();
     img.onload = function() { callback(true); };
     img.onerror = function() { callback(false); };
     img.src = url;
-  }
+}
 
 var dragged = false;
 var touchStartPositon = null;
@@ -396,8 +404,9 @@ function debugInstitutionLogos() {
 
 function debugPortraits() {
     for (student of students.get(currentYear)) {
-        fetch('portraits/' + currentYear + '/' + student['First name'] + ' ' + student['Last name']  + '.jpg')
-                .catch(() => console.err('Portrait not found for Student: ' + student.name));
+        fetch(getPortraitUrl(currentYear, student['First name'] + ' ' + student['Last name']), {
+            mode: 'no-cors'
+        });
     }
 }
 
